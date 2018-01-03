@@ -15,18 +15,36 @@
  */
 'use strict';
 
-/**
- * Triggers when a user gets a new follower and sends notifications if the user has enabled them.
- * Also avoids sending multiple notifications for the same user by keeping a timestamp of sent notifications.
- */
-if (!process.env.FUNCTION_NAME || process.env.FUNCTION_NAME === 'sendFollowerNotification') {
-  exports.sendFollowerNotification = require('./sendFollowerNotification').default;
-}
+const admin = require('firebase-admin');
+const functions = require('firebase-functions');
 
-/**
- * When an image is uploaded we check if it is flagged as Adult or Violence by the Cloud Vision
- * API and if it is we blur it using ImageMagick.
- */
-if (!process.env.FUNCTION_NAME || process.env.FUNCTION_NAME === 'blurOffensiveImages') {
-  exports.blurOffensiveImages = require('./blurOffensiveImages').default;
-}
+admin.initializeApp(functions.config().firebase);
+const wipeout = require('./wipeout');
+
+const WIPEOUT_CONFIG = {
+    'credential': admin.credential.applicationDefault(),
+    'db': admin.database(),
+    'serverValue': admin.database.ServerValue,
+    'users': functions.auth.user(),
+    'DB_URL': functions.config().firebase.databaseURL,
+  };
+
+wipeout.initialize(WIPEOUT_CONFIG);
+
+/** expose cleanupUserDat as Cloud Function */
+exports.cleanupUserData = wipeout.cleanupUserData();
+
+/** expose showWipeoutConfig as Cloud Function */
+exports.showWipeoutConfig = wipeout.showWipeoutConfig();
+
+/** Cloud Function that adds demo data to app for a user. */
+exports.addDataDemo = functions.https.onRequest((req, res) => {
+  if (req.method === 'POST') {
+    const body = JSON.parse(req.body);
+    if (typeof body.ref === 'undefined' || typeof body.content !== 'object') {
+      return Promise.reject('Needs ref and content field to add demo data');
+    }
+    return admin.database().ref(body.ref).set(body.content)
+        .then(() => res.send('data added'));
+  }
+});
