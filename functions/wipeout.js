@@ -81,7 +81,7 @@ functions directory with a 'wipeout' field.`, err);
  *
  * @param {array} configs input list of config
  * @param {string} uid autentication id of deleted account
- * @return {arrau} configs after processing
+ * @return {array} configs after processing
  */
 const preProcess = (configs, uid) => {
   const newConfigs = deepcopy(configs);
